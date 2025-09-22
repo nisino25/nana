@@ -531,7 +531,6 @@ export default {
       this.updatingData()
     },
     async submit(){
-      console.log("submitting cards-----");
       this.lastSubmitBy = this.currentPlayer.name
 
       await this.updatingData()
@@ -547,12 +546,12 @@ export default {
         }
       }
 
+      
+
+
+
+      
       await this.updateAudio('card-submit')
-
-
-
-      
-      
       await this.goToNextPlayer()
       await this.updatingData()
 
@@ -643,6 +642,7 @@ export default {
     },
 
     async submitProcess() {
+      await this.updateAudio('card-submit')
       this.isCheckingNow = true;
 
       this.selectedCard = null;
@@ -710,7 +710,7 @@ export default {
 
     },
 
-    cleanAndProceed(){
+    async cleanAndProceed(){
       this.revealedCards.forEach(card => {
         card.isInRevealedArea = false;
       });
@@ -718,6 +718,7 @@ export default {
       this.publicPile.forEach(card => {
         card.isInRevealedArea = false;
       });
+      await this.updateAudio('card-submit')
 
       this.goToNextPlayer();
       this.updatingData();

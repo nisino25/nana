@@ -234,8 +234,8 @@ export default {
   },
   data() {
     return {
-      // developingMode: false,
-      developingMode: true,
+      developingMode: false,
+      // developingMode: true,
 
       defaultNumber: 2,
       maxPlayerNumber: 6,

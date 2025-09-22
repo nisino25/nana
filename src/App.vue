@@ -65,12 +65,29 @@
           <div class="area-container">
 
             <div class="other-players-area">
-              <template v-for="otherPlayer in getOtherPlayers()" :key="otherPlayer.name">                  
-                <PlayerInfo
-                  :player="otherPlayer"
-                  :isActive="otherPlayer == currentPlayer && onlineStatus == 'playing'"
-                  :hand="otherPlayer.hand"
-                />
+              <template v-for="otherPlayer in getOtherPlayers()" :key="otherPlayer.name">
+                <div class="other-player relative">
+                  <PlayerInfo
+                    :player="otherPlayer"
+                    :isActive="otherPlayer == currentPlayer && onlineStatus == 'playing'"
+                    :hand="otherPlayer.hand"
+                  />
+  
+                  <!-- player action buttons (show only when selected) -->
+                  <div v-if="selectedPlyaer?.name === otherPlayer.name" class="card-actions flex-col justify-between">
+                    <i 
+                      class="fas fa-arrow-up bg-green-500 text-white p-2 rounded" 
+                      @click="pickCardFrom(otherPlayer.name,'up')">
+                    </i>
+                    <i 
+                      class="fas fa-arrow-down bg-blue-500 text-white p-2 rounded" 
+                      @click="pickCardFrom(otherPlayer.name,'down')">
+                    </i>
+                  </div>
+  
+                  <!-- Click to select -->
+                  <div v-else class="absolute top-0 left-0 w-full h-full cursor-pointer" @click="selectPlayer(otherPlayer)" ></div>
+                </div>                 
                 
               </template>
             </div>
@@ -85,19 +102,24 @@
                     <div 
                       class="gameCard" 
                       :id="'card-'+card?.id" 
-                      :class="{ flipped: card.flipped}"  
+                      :class="[
+                        { 'flipped': !card.isInRevealedArea, 'opacity-0': card.captured }
+                      ]"  
                     >
 
                       <div class="card-inner">
-                        <div class="card-front"></div>
-                        <div class="card-back">
+                        <div class="card-front">
+                          <img src="../public/img/card-front.png">
                           <span>{{ card?.number }}</span>
+                        </div>
+                        <div class="card-back">
+                          <img src="../public/img/card-back.png">
                         </div>
                       </div>
                       <!-- Action buttons (show only when selected) -->
                       <div v-if="selectedCard?.id === card.id" class="card-actions flex-col justify-between">
-                          <i class="fas bg-green-500 text-white fa-check" @click="confirmCard(card, 'public')"></i>
-                          <i class="fas bg-red-500 text-white fa-times" @click="cancelSelection"></i>
+                        <i class="fas bg-green-500 text-white fa-check" @click="confirmCard(card)"></i>
+                        <i class="fas bg-red-500 text-white fa-times" @click="cancelSelection"></i>
                       </div>
 
                       <!-- Click to select -->
@@ -118,27 +140,45 @@
                     :isActive="yourPlayer == currentPlayer && onlineStatus == 'playing'"
                     :hand="yourPlayer.hand"
                     :isYourPlayer="true"
+                    :currentSelectedPlyaer="selectedPlyaer"
                   />
+                  <!-- player action buttons (show only when selected) -->
+                  <div v-if="selectedPlyaer?.name === yourPlayer.name" class="card-actions flex-col justify-between">
+                      <i 
+                        class="fas fa-arrow-up bg-green-500 text-white p-2 rounded" 
+                        @click="pickCardFrom(yourPlayer.name,'up')">
+                      </i>
+                      <i 
+                        class="fas fa-arrow-down bg-blue-500 text-white p-2 rounded" 
+                        @click="pickCardFrom(yourPlayer.name,'down')">
+                      </i>
+
+                  </div>
+
+                  <!-- Click to select -->
+                  <div v-else class="absolute top-0 left-0 w-full h-full cursor-pointer" @click="selectPlayer(yourPlayer)" ></div>
                 </div>
   
                 <div class="revealed-area">
+                  <h5 class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">{{ gameMessage }}</h5>
                   <template v-for="(card) in revealedCards" :key="card.id">
                     <div class="card-container oveflow-hidden">
                       <div 
-                        class="gameCard" 
+                        class="gameCard mx-auto" 
                         :id="'card-'+card?.id"
                         @click="cardTest(card)"
                       >
 
-                        <div class="card-inner">
-                          <div class="card-front"></div>
-                          <div class="card-back">
-                            <span>{{ card.number }}</span>
-                          </div>
+                        <div class="card-front">
+                          <img src="../public/img/card-front.png">
+                          <span>{{ card?.number }}</span>
+                        </div>
+                        <div class="card-back">
+                          <img src="../public/img/card-back.png">
                         </div>
 
                       </div>
-                      <span class="text-xs text-center">{{ card.location }}</span>
+                      <span class="text-xs block text-center mt-2">{{ card.location }}</span>
                       </div>
                     </template>
                 </div>
@@ -156,20 +196,14 @@
                       >
 
                         <div class="card-inner">
-                          <div class="card-front"></div>
+                          <div class="card-front">
+                            <img src="../public/img/card-front.png">
+                            <span>{{ card?.number }}</span>
+                          </div>
                           <div class="card-back">
-                            <span>{{ card.number }}</span>
+                            <img src="../public/img/card-back.png">
                           </div>
                         </div>
-
-                        <!-- Action buttons (show only when selected) -->
-                        <div v-if="selectedCard?.id === card.id" class="card-actions flex-col justify-between">
-                            <i class="fas bg-green-500 text-white fa-check" @click="confirmCard(card, 'personal')"></i>
-                            <i class="fas bg-red-500 text-white fa-times" @click="cancelSelection"></i>
-                        </div>
-
-                        <!-- Click to select -->
-                        <div class="absolute top-0 left-0 w-full h-full cursor-pointer" @click="selectCard(card)" v-else></div>
                       </div>
                     </template>
     
@@ -221,7 +255,9 @@ export default {
 
       tempCards: [],
 
-      // -------
+      selectedPlyaer: null,
+
+      // ----------------
       roomOption: null,
       roomCode: null,
       tempRoomcode: null,
@@ -240,6 +276,9 @@ export default {
       avatars: [],
       randomString: null,
 
+      isCheckingNow: false,
+      gameMessage: "",
+
     };
   },
   computed: {
@@ -251,76 +290,6 @@ export default {
     },
     currentPlayer() {
       return this.players[this.currentPlayerIndex];
-    },
-    drawPile() {
-      return this.deck.filter(card => card.location === 'drawPile');
-    },
-    trashPile() {
-      return this.deck.filter(card => card.location === 'trash');
-    },
-    sortedTrashPile() {
-      return this.deck
-            .filter(card => card.location === 'trash' && card.type === 'food')
-            .sort((a, b) => a.name.localeCompare(b.name));
-    },
-    previousCards() {
-      return this.publicPile
-        .filter(card => card.isPreviousCard)
-        .sort((a, b) => {
-          const valueA = this.isRevolutionGoing || this.isTempRevolutionGoing ? a.revolutionValue : a.value;
-          const valueB = this.isRevolutionGoing || this.isTempRevolutionGoing ? b.revolutionValue : b.value;
-          return valueA - valueB;
-        });
-    },
-    playerHands() {
-      return playerName => this.deck
-        .filter(card => card.location === playerName)
-        .sort((a, b) => {
-          // First, sort by value
-          const valueComparison = a.value - b.value;
-          if (valueComparison !== 0) {
-            return valueComparison;
-          }
-          // Then, sort by suit
-          const suitOrder = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
-          return suitOrder.indexOf(a.suit) - suitOrder.indexOf(b.suit);
-        });
-    },
-    yourPlayerHands() {
-      return this.deck
-        .filter(card => card.location === this.yourPlayer.name)
-        .sort((a, b) => {
-          const valueA = this.isRevolutionGoing ? a.revolutionValue : a.value;
-          const valueB = this.isRevolutionGoing ? b.revolutionValue : b.value;
-
-          // First, sort by value or revolutionValue
-          const valueComparison = valueA - valueB;
-          if (valueComparison !== 0) {
-            return valueComparison;
-          }
-
-          // Then, sort by suit
-          const suitOrder = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
-          return suitOrder.indexOf(a.suit) - suitOrder.indexOf(b.suit);
-        });
-    },
-    yourPlayerPickedHands() {
-      return this.deck
-        .filter(card => card.location === this.username && card.isPicked)
-        .sort((a, b) => {
-          const valueA = this.isRevolutionGoing ? a.revolutionValue : a.value;
-          const valueB = this.isRevolutionGoing ? b.revolutionValue : b.value;
-
-          // First, sort by value or revolutionValue
-          const valueComparison = valueA - valueB;
-          if (valueComparison !== 0) {
-            return valueComparison;
-          }
-
-          // Then, sort by suit
-          const suitOrder = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
-          return suitOrder.indexOf(a.suit) - suitOrder.indexOf(b.suit);
-        });
     },
     
     readyToSubmit() {
@@ -427,7 +396,14 @@ export default {
       // Flatten all players' hands and filter only revealed cards
       return this.players
         .flatMap(player => player.hand)       // get all cards from all players
-        .filter(card => card?.isInRevealedArea); // only keep revealed cards
+        .filter(card => card?.isInRevealedArea && !card.captured); // only keep revealed cards
+    },
+
+    allRevealedCards() {
+
+      const publicRevealed = this.publicPile.filter(card => card?.isInRevealedArea && !card.captured);
+
+      return [...this.revealedCards, ...publicRevealed];
     },
 
     yourPlayer() {
@@ -436,7 +412,7 @@ export default {
     sortedYourPlayerHand() {
       if (!this.yourPlayer || !this.yourPlayer.hand) return [];
       return [...this.yourPlayer.hand]
-        .filter(card => !card.isInRevealedArea) // only unrevealed cards
+        .filter(card => !card.isInRevealedArea && !card.captured) // only unrevealed cards
         .sort((a, b) => a.number - b.number);
     },
   },
@@ -477,17 +453,15 @@ export default {
       let fullDeck = [];
       let id = 1;
       for (let num = 1; num <= 12; num++) {
-          for (let i = 0; i < 3; i++) {
-              fullDeck.push({
-                  id: id++,
-                  number: num,
-                  location: 'publicPile', // Temporary location
-                  isPicked: false,
-                  isRevealed: false,
-                  isComplete: false,
-                  flipped: true,
-              });
-          }
+        for (let i = 0; i < 3; i++) {
+          fullDeck.push({
+            id: id++,
+            number: num,
+            location: 'publicPile', // Temporary location
+            isInRevealedArea: false,
+            isCaptured: false,
+          });
+        }
       }
 
       // Step 2: Adjust deck based on players.length
@@ -549,38 +523,8 @@ export default {
         console.log('going to the next player-----');
         // Move to the next player, wrapping around if necessary
         this.currentPlayer.isRevealing = false
-        this.unpickAllCurrentPlayerCards();
         this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
 
-        let activePlayerCount = 0
-        for(let player of this.players){
-          if(this.playerHands(player.name).length !== 0) activePlayerCount++
-        }
-
-
-        if(activePlayerCount == 1) {
-          console.log('the game is over');
-          this.currentPlayerIndex = this.players.length + 1
-          this.updateResult()
-          return
-        }
-
-
-        if(this.playerHands(this.currentPlayer.name).length == 0){
-          if(this.currentPlayer.name == this.lastSubmitBy) await 
-          this.goToNextPlayer()
-        }
-
-
-    },
-
-    
-    unpickAllCurrentPlayerCards() {
-      this.yourPlayerPickedHands.forEach(card => {
-        if (card.isPicked) {
-          card.isPicked = false;
-        }
-      });
     },
     async passToNext(){
       this.goToNextPlayer()
@@ -589,76 +533,9 @@ export default {
     async submit(){
       console.log("submitting cards-----");
       this.lastSubmitBy = this.currentPlayer.name
-      const currentTime = Date.now();
-
-      // Check if the yourPlayerPickedHands has more than one distinct value
-      const tempArr = this.yourPlayerPickedHands
-
-      // Generate a random integer between minDeg and maxDeg
-
-      const maxDeg = 2.5;
-      let randomRotation = Math.floor(Math.random() * (maxDeg - -maxDeg + 1)) + (-1 * maxDeg);
-
-      const vertRandom = Math.floor(Math.random() * (50 - 5 + 1)) + 5;
-      const horzRandom = Math.floor(Math.random() * (65 - 5 + 1)) + 5;
-      let tempZindex = 0
-
-      this.yourPlayerPickedHands.forEach(card => {
-        card.isPicked = false
-        
-        card.updatedAt = currentTime;
-
-        card.rotation = 0
-
-        card.submitedBy = this.yourPlayer.name
-
-        const elementId = `card-${card.id}`;
-        const cardElement = document.getElementById(elementId);
-
-        const rect = cardElement.getBoundingClientRect();
-
-        card.currentX = rect.left;
-        card.currentY = rect.top;
-        card.width = cardElement.offsetWidth;
-        card.hasDestination = false;
-        card.translateX = 0;
-        card.zIndex = tempZindex;
-        tempZindex++
-
-
-        card.verticalPosition = vertRandom
-        card.horizontalPosition = horzRandom
-
-        card.location = 'moving'
-      });
 
       await this.updatingData()
 
-      await this.sleep(250)
-      // await this.sleep(25000)
-
-      // -----------------------------------------
-      const container = document.querySelector('.public-area .public-cards-container');
-      // if (!container) return null;
-
-      const containerRect = container.getBoundingClientRect();
-
-      let originLeft = 0
-      for (let tempCard of tempArr) {
-        const deckCard = this.deck.find(card => card.id === tempCard.id);
-        deckCard.hasDestination = true
-        deckCard.currentX = containerRect.left + (containerRect.width * (deckCard.horizontalPosition / 100));
-        deckCard.currentY = containerRect.top + (containerRect.height * (deckCard.verticalPosition / 100));
-
-
-        deckCard.translateX = originLeft
-        originLeft = originLeft + 20
-
-        deckCard.rotation = randomRotation
-        randomRotation = randomRotation + 7.5
-      }
-
-      
 
       // -----------------------------------------
       await this.updatingData()
@@ -670,40 +547,11 @@ export default {
         }
       }
 
-      // 8giri
-      if(tempArr[tempArr.length - 1].value == 8 && this.yourPlayerHands.length !== 0){
-        await this.sleep(1000)
-        await this.updatingData()
-        return
-      }
-
-      // 11 back
-      if(tempArr[tempArr.length - 1].value == 11) this.isTempRevolutionGoing = true
-
-      // 7 giveaway
-      if(tempArr[tempArr.length - 1].value == 7 && this.yourPlayerHands.length !== 0) {
-        this.isSevenGiveawayGoing = true
-        await this.updatingData()
-        return
-      }
-
-
       await this.updateAudio('card-submit')
 
-      // check the gamewinner
-      if(this.yourPlayerHands.length == 0) await this.updateResult()
 
 
       
-
-
-      // Filter cards located in 'publicArea' or 'trash'
-      const filteredCards = this.deck.filter(card => card.location === 'trash');
-
-      // Change the location to null for the filtered cards
-      filteredCards.forEach(card => {
-        card.location = null;
-      });
       
       await this.goToNextPlayer()
       await this.updatingData()
@@ -733,38 +581,149 @@ export default {
       const card = this.publicPile?.find(c => c.id === cardId);
       if (card) card.isFliped = true;
     },
-    openPublicCard(card){
-      if(this.yourPlayer !== this.currentPlayer) return
-      if(!card.flipped) return
 
-      card.flipped = false
-
-      this.updatingData()
-    },
-    revealCard(card){
-      card.isInRevealedArea = true
-      this.updatingData()
-    },
     selectCard(card) {
       if(this.yourPlayer !== this.currentPlayer) return
-      if(!card.flipped) return
+      if(this.revealedCards.length >= 3) return;
+      if(card.isInRevealedArea) return;
+      if(card.isCaptured) return;
+      if(this.isCheckingNow) return;
 
       this.selectedCard = card
     },
-    confirmCard(card, whereFrom) {
-      if(whereFrom == 'public') this.openPublicCard(card);
-      if(whereFrom == 'personal') this.revealCard(card);
-      this.selectedCard = null
+    async confirmCard(card) {
+      if(this.yourPlayer !== this.currentPlayer) return;
+      if(card.isInRevealedArea) return;
+      
+
+      card.isInRevealedArea = true
+
+      await this.submitProcess();
     },
     cancelSelection() {
       this.selectedCard = null
     },
 
-    cardTest(card){
-      console.log(card)
+    selectPlayer(player) {
+      if(this.yourPlayer !== this.currentPlayer) return;
+      if(this.revealedCards.length >= 3) return;
+      if(this.isCheckingNow) return;
+
+      this.selectedPlyaer = player
     },
 
-    // -------------
+    async pickCardFrom(playerName, direction) {
+      // 1. find the player
+      const player = this.players.find(p => p.name === playerName);
+      if (!player || !player.hand) return;
+
+      // 2. filter unrevealed cards
+      const unrevealed = player.hand.filter(card => !card.isInRevealedArea);
+
+      if (unrevealed.length === 0) return; // nothing left to pick
+
+      // 3. sort by number ascending
+      const sorted = [...unrevealed].sort((a, b) => a.number - b.number);
+
+      // 4. pick the card
+      let pickedCard;
+      if (direction === "up") {
+        pickedCard = sorted[sorted.length - 1]; // highest
+      } else if (direction === "down") {
+        pickedCard = sorted[0]; // lowest
+      }
+
+      // 5. reveal it
+      if (pickedCard) {
+        pickedCard.isInRevealedArea = true;
+      }
+
+      this.submitProcess()
+
+    },
+
+    async submitProcess() {
+      this.isCheckingNow = true;
+
+      this.selectedCard = null;
+      this.selectedPlyaer = null;
+      this.updatingData();
+
+      // check all is same number ---------------
+      if(this.allRevealedCards.length > 1) await this.sleep(1000);
+      this.isCheckingNow = false;
+
+
+      const allSame = this.allRevealedCards.every(
+        card => card.number === this.allRevealedCards[0].number
+      );
+
+      if (!allSame) return this.cleanAndProceed();
+
+      // check 3 card or not
+
+      if(this.allRevealedCards.length < 3) return;
+
+      await this.sleep(1000);
+      
+      console.log('capturing');
+      const capturedNum = this.allRevealedCards[0].number
+      this.yourPlayer.captured.push(capturedNum);
+
+
+
+
+      // then capture
+      
+      this.allRevealedCards[2].captured = true
+      this.allRevealedCards[1].captured = true
+      this.allRevealedCards[0].captured = true
+
+      
+      
+      // this.updatingData();
+      // await this.sleep(3000);
+
+
+
+      // // keep the pile location
+
+      // check if the game is over
+
+
+      // is 7 included then over
+      // see if it adds up to 7
+      if(this.yourPlayer.captured.includes(7)) return this.updateResult();
+      if(this.yourPlayer.captured.length == 3) return this.updateResult();
+      
+      const capturedA = this.yourPlayer.captured[0]
+      const capturedB = this.yourPlayer.captured[1]
+      
+      if((capturedA + capturedB === 7) || (Math.abs(capturedA - capturedB) === 7)) return this.updateResult();
+
+      // if not then reset then next player
+      this.goToNextPlayer();
+      this.updatingData();
+
+      
+
+
+    },
+
+    cleanAndProceed(){
+      this.revealedCards.forEach(card => {
+        card.isInRevealedArea = false;
+      });
+
+      this.publicPile.forEach(card => {
+        card.isInRevealedArea = false;
+      });
+
+      this.goToNextPlayer();
+      this.updatingData();
+    },
+
+    // ======================================================
     
     generateAvatar() {
       const randomString = Math.random().toString();
@@ -799,7 +758,7 @@ export default {
       this.roomCode = this.tempRoomcode
       localStorage.setItem('latestRoomCode', this.roomCode)
       
-      this.players.push({name:this.username, isHost:true,randomString: this.randomString})
+      this.players.push({name:this.username, isHost:true,randomString: this.randomString, captured: []})
 
       localStorage.userName = this.userName
 
@@ -832,7 +791,7 @@ export default {
           this.players = doc.data().players;
           this.onlineStatus = doc.data().players;
 
-          if (!this.players.includes(this.username)) this.players.push({name:this.username, isHost:false,randomString:  this.randomString});
+          if (!this.players.includes(this.username)) this.players.push({name:this.username, isHost:false,randomString:  this.randomString, captured: []});
           this.roomCode = this.tempRoomcode
 
           await docRef.update({
@@ -869,9 +828,6 @@ export default {
             }
           });
         }
-
-        
-        
 
         if(this.onlineStatus == 'playing' || this.onlineStatus == 'distributing') {
           this.deck = doc.data().deck;
@@ -947,7 +903,9 @@ export default {
       const ref = db.collection('nana-rooms')
       this.gameResults.push(this.yourPlayer.name)
       ref.doc(`${this.roomCode}`).update({
-        gameResults: this.gameResults
+        gameResults: this.gameResults,
+        players: this.players,
+        publicPile: this.publicPile,
       })
     },
 
@@ -971,52 +929,6 @@ export default {
       } catch (error) {
         console.error('Error loading sound file:', error);
       }
-    },
-
-    getMovingCardLocation(card){
-      let style
-
-      if(card.submitedBy == this.yourPlayer.name){
-        style = {
-          left: card.currentX + 'px', 
-          top: card.currentY + 'px', 
-          transform: `rotate(${card.rotation}deg) translateX(${card.translateX}px)`,
-          width : card.width + 'px',
-          zIndex: card.zIndex,
-        }
-      }else if(card.hasDestination == false){
-        const landingContainer = document.querySelector(`#player-${card.submitedBy}`);
-        const landingContainerRect = landingContainer.getBoundingClientRect();
-
-        card.currentX = landingContainerRect.left + (landingContainerRect.width / 2);
-        card.currentY = landingContainerRect.top + (landingContainerRect.height / 2);
-          
-
-        style = {
-          left: card.currentX + 'px', 
-          top: card.currentY + 'px',
-          width : '0px',
-          height: '0px',
-          zIndex: card.zIndex,
-        }
-      }else{
-        const landingContainer = document.querySelector(`.public-cards-container`);
-        const landingContainerRect = landingContainer.getBoundingClientRect();
-
-        card.currentX = landingContainerRect.left + (landingContainerRect.width * (card.horizontalPosition / 100));
-        card.currentY = landingContainerRect.top + (landingContainerRect.height * (card.verticalPosition / 100));
-          
-
-        style = {
-          left: card.currentX + 'px', 
-          top: card.currentY + 'px',
-          transform: `rotate(${card.rotation}deg) translateX(${card.translateX}px)`,
-          width : card.width + 'px',
-          zIndex: card.zIndex,
-        }
-      }
-
-      return style
     },
 
     generateAvatars() {
@@ -1045,6 +957,16 @@ export default {
       }
     }
 
+  },
+  watch: {
+    gameResults(newVal) {
+      if (newVal && newVal.length > 0) {
+        this.isCheckingNow = true;
+        this.sleep(1000);
+        alert(`${newVal[0]} won the game`);
+        this.gameMessage = "GAME IS OVER"
+      }
+    }
   },
   async mounted(){
     console.clear()
@@ -1167,58 +1089,6 @@ export default {
     border-radius: 10px;
   }
 
-  .gameCard{
-    position: relative;
-    padding: 5px 2.5px;
-    border: 1px solid black;
-    border-radius: 5px;
-    /* position: absolute; */
-
-    overflow: hidden;
-    color: black;
-
-    transition: all .3s ease-in-out;
-
-    width:55px;
-    aspect-ratio: 10 / 15;
-    /* height: 90px; */
-
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
-  }
-
-
-  .gameCard .card-info{
-    display: block;
-    width: 35%;
-    text-align: center;
-    font-size: .75em;
-
-    
-  }
-
-  .gameCard .card-info .vertical-text{
-    writing-mode: vertical-rl;
-    /* transform: rotate(-180deg); */
-    white-space: nowrap;
-  }
-
-  .gameCard .card-detail{
-    position: absolute;
-    top: 60%;
-    left: 50%;
-    transform: translate(-50%,-50%);
-
-    width: 50%;
-  }
-
-  .gameCard img {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    width: 100%;
-    aspect-ratio: 1;
-  }
-
   .card-actions {
     position: absolute;
     top: 50%;
@@ -1265,6 +1135,7 @@ export default {
     
   }
   .playerInfo{
+    position: relative;
     text-align: center;
     font-size: .7em;
   }
@@ -1394,13 +1265,23 @@ export default {
     filter: brightness(.5);
   }
 
-  .public-area .opened-block .gameCard{
+  .gameCard{
     display: block;
-    margin: 0 auto 5px;
-  }
+    position: relative;
+    border: 1px solid black;
+    border-radius: 5px;
+    /* position: absolute; */
 
-  .flipped {
-    background-color: white;
+    overflow: hidden;
+    color: black;
+
+    transition: all .3s ease-in-out;
+
+    width:55px;
+    aspect-ratio: 10 / 15;
+    /* height: 90px; */
+
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
   }
 
   .card-inner {
@@ -1415,10 +1296,24 @@ export default {
     transform: rotateY(-180deg);
   }
 
+  .gameCard img{
+    position: absolute;
+    width: 100%;
+    height: 100%;
+  }
+
   .card-front{
     width: 100%;
     height: 100%;
-    background: yellow;
+  }
+
+  .card-front span{
+    position: absolute;
+    top: 46%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    color: #FAEBD7;
+    font-size: 1.8em;
   }
 
   .card-front,
@@ -1427,18 +1322,17 @@ export default {
     height: 100%;
     position: absolute;
     backface-visibility: hidden;
-    border: 1px solid #ccc;
+    /* border: 1px solid #ccc; */
     box-sizing: border-box;
-    background: white;
     
     /* border: 1px solid #000; */
 
     box-shadow: 2px 2px 1px #888888;
   }
-  
 
-
-
+  .card-back {
+    transform: rotateY(-180deg);
+  }
 
   /* ---------------------------------------- */
 
@@ -1462,6 +1356,7 @@ export default {
   }
 
   .revealed-area {
+    position: relative;
     margin: auto;
     overflow: hidden;
     display: grid;
@@ -1476,9 +1371,6 @@ export default {
     position: relative;
     z-index: 2;
   }
-
-
-
   .my-player{
     position: relative;
     display: flex;
@@ -1526,34 +1418,28 @@ export default {
   }
 
 
-
   .player-mask::before{
     opacity: .5 !important;
   }
 
-  /* .personal-area > *{
-    padding: 5px;
-    background: #4B6F44;
-    border-radius: 10px;
 
+  .my-player .card-actions{
+    height: 75%;
+  }
+
+  .player-action-mask{
+    position: absolute;
+    display: block;
+    top: 0%;
+    left: 0%;
     width: 100%;
     height: 100%;
-  } */
 
-  /* ---------------------------------------- */
+    background:black;
 
-
-  .basic-info{
-    position: absolute;
-    bottom: 10px;
-
-    width: 90%;
-
-    left: 50%;
-    transform: translate(-50%,-50%);
-
-    display: flex;
-    justify-content: space-between;
+    opacity: .5 !important;
+    transition: all .5s ease-in-out;
   }
+
 
 </style>

@@ -15,13 +15,14 @@
                 <div
                     class="player-card-num-container absolute right-0 bottom-0 bg-black rounded-tl-full aspect-square w-[37.5%] flex items-center justify-center"
                 >
-                    <small class="text-sm translate-x-[2.5px]">{{ hand?.length }}</small>
+                    <small class="text-sm translate-x-[2.5px]">{{ countHandsLength(hand) }}</small>
                 </div>
             </div>
             <div class="captured-area">
                 {{ player.captured?.length ? player.captured.join(', ') : '-' }}
             </div>
         </div>
+        <div v-if="currentSelectedPlyaer?.name == player.name" class="player-action-mask" ></div>
     </div>
 </template>
 
@@ -31,7 +32,8 @@ export default {
         player: { type: Object, required: false },
         isActive: { type: Boolean, required: false },
         hand: { type: Array, required: false },
-        isYourPlayer: { type: Boolean, required: false }
+        isYourPlayer: { type: Boolean, required: false },
+        currentSelectedPlyaer: {type: Object, required: false}
     },
     data() {
         return {
@@ -70,7 +72,17 @@ export default {
                     this.playerBoxWidth = otherPlayer.clientWidth;
                 }
             });
-        }
+        },
+        countHandsLength(hand) {
+            if (!hand || !Array.isArray(hand)) return 0;
+
+            return hand.reduce((count, card) => {
+                if (!card.captured && !card.isInRevealedArea) {
+                count++;
+                }
+                return count;
+            }, 0);
+        },
     }
 };
 </script>

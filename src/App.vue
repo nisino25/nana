@@ -489,11 +489,16 @@ export default {
 
       // Step 5: Deal cards
       this.players.forEach(player => {
-          player.hand = deck.splice(0, cardsPerPlayer).map(card => {
-              card.location = player.name; // Update location to player's name
-              return card;
-          });
+          let tempPublicCards = deck.filter(card => card.location === 'publicPile');
+        
+        // Take cardsPerPlayer from the filtered publicPile
+        player.hand = tempPublicCards.splice(0, cardsPerPlayer).map(card => {
+            card.location = player.name; // Update location to player's name
+            return card;
+        });
+
       });
+
       this.publicPile = deck;
 
     },
